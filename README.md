@@ -16,6 +16,7 @@ The server provides MCP tools for common cargo operations:
 
 - `cargo_check` - Run `cargo check`
 - `cargo_build` - Run `cargo build`
+- `cargo_test` - Run `cargo test` with optional test name/pattern
 
 ### Response Format
 
