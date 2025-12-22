@@ -1,9 +1,7 @@
-use sacp::{
-    ProxyToConductor, mcp_server::McpServer,
-};
+use crate::cargo_command::{CargoCommandParams, execute_cargo_command};
+use sacp::{ProxyToConductor, mcp_server::McpServer};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::cargo_command::{CargoCommandParams, execute_cargo_command_async};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
 struct EmptyParams {}
@@ -18,8 +16,15 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             indoc::indoc! {r#"
                 Runs cargo check.
             "#},
-            async move |_input: EmptyParams, _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
-                Ok(execute_cargo_command_async(CargoCommandParams { command: "check".to_string(), args: vec![], cwd: None }).await?)
+            async move |_input: EmptyParams,
+                        _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
+                Ok(execute_cargo_command(CargoCommandParams {
+                    command: "check".to_string(),
+                    args: vec![],
+                    cwd: None,
+                    skip_json_format: false,
+                })
+                .await?)
             },
             sacp::tool_fn_mut!(),
         )
@@ -28,8 +33,15 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             indoc::indoc! {r#"
                 Runs cargo build.
             "#},
-            async move |_input: EmptyParams, _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
-                Ok(execute_cargo_command_async(CargoCommandParams { command: "build".to_string(), args: vec![], cwd: None }).await?)
+            async move |_input: EmptyParams,
+                        _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
+                Ok(execute_cargo_command(CargoCommandParams {
+                    command: "build".to_string(),
+                    args: vec![],
+                    cwd: None,
+                    skip_json_format: false,
+                })
+                .await?)
             },
             sacp::tool_fn_mut!(),
         )

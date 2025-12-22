@@ -1,13 +1,40 @@
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+
+/// Filter cargo JSON messages to keep only compiler-message and build-finished
+fn filter_json_messages(stdout: &str) -> Vec<serde_json::Value> {
+    stdout
+        .lines()
+        .filter_map(|line| {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(reason) = json.get("reason").and_then(|r| r.as_str()) {
+                    if reason == "compiler-message" || reason == "build-finished" {
+                        let mut filtered = serde_json::Map::new();
+                        json.get("reason")
+                            .map(|s| filtered.insert("reason".to_string(), s.clone()));
+                        json.get("package_id")
+                            .map(|s| filtered.insert("package_id".to_string(), s.clone()));
+                        json.get("success")
+                            .map(|s| filtered.insert("success".to_string(), s.clone()));
+                        json.get("message")
+                            .and_then(|m| m.get("rendered"))
+                            .map(|s| filtered.insert("rendered_message".to_string(), s.clone()));
+                        return Some(serde_json::Value::Object(filtered));
+                    }
+                }
+            }
+            None
+        })
+        .collect()
+}
 
 /// Filter out cargo file lock messages from stderr
 fn filter_stderr(stderr: &str) -> String {
     stderr
         .lines()
-        .filter(|line| !line.contains("Blocking waiting for file lock on package cache"))
+        .filter(|line| !line.contains("Blocking waiting for file lock"))
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -22,38 +49,52 @@ pub struct CargoCommandParams {
     pub args: Vec<String>,
     /// Optional working directory (defaults to current directory)
     pub cwd: Option<String>,
+    /// Skip adding --message-format json (defaults to false)
+    #[serde(default)]
+    pub skip_json_format: bool,
 }
 
-/// Result of cargo command execution
+/// Result of cargo command execution with JSON messages
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct CargoCommandResult {
+pub struct CargoCommandJsonResult {
     pub success: bool,
     pub exit_code: Option<i32>,
-    pub stdout: String,
+    pub messages: Vec<serde_json::Value>,
     pub stderr: String,
     pub command: String,
 }
 
-/// Execute a cargo command using tokio's async process
-pub async fn execute_cargo_command_async(
-    params: CargoCommandParams,
-) -> Result<CargoCommandResult> {
+/// Execute cargo command with JSON message format
+pub async fn execute_cargo_command(params: CargoCommandParams) -> Result<CargoCommandJsonResult> {
     let mut cmd = Command::new("cargo");
     cmd.arg(&params.command);
     cmd.args(&params.args);
-    
+
+    if !params.skip_json_format {
+        cmd.args(["--message-format", "json-diagnostic-short"]);
+    }
+
     if let Some(cwd) = &params.cwd {
         cmd.current_dir(cwd);
     }
-    
+
     let output = cmd.output().await?;
-    
-    Ok(CargoCommandResult {
+
+    Ok(CargoCommandJsonResult {
         success: output.status.success(),
         exit_code: output.status.code(),
-        stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+        messages: filter_json_messages(&String::from_utf8_lossy(&output.stdout)),
         stderr: filter_stderr(&String::from_utf8_lossy(&output.stderr)),
-        command: format!("cargo {} {}", params.command, params.args.join(" ")),
+        command: format!(
+            "cargo {} {}{}",
+            params.command,
+            params.args.join(" "),
+            if params.skip_json_format {
+                ""
+            } else {
+                " --message-format json"
+            }
+        ),
     })
 }
 
@@ -67,11 +108,12 @@ mod tests {
             command: "version".to_string(),
             args: vec![],
             cwd: None,
+            skip_json_format: true,
         };
-        
-        let result = execute_cargo_command_async(params).await.unwrap();
+
+        let result = execute_cargo_command(params).await.unwrap();
+        dbg!(&result);
         assert!(result.success);
-        assert!(result.stdout.contains("cargo"));
     }
 
     #[tokio::test]
@@ -80,10 +122,11 @@ mod tests {
             command: "help".to_string(),
             args: vec!["build".to_string()],
             cwd: None,
+            skip_json_format: true,
         };
-        
-        let result = execute_cargo_command_async(params).await.unwrap();
+
+        let result = execute_cargo_command(params).await.unwrap();
         assert!(result.success);
-        assert_eq!(result.command, "cargo help build");
+        assert!(result.command.contains("cargo help build"));
     }
 }

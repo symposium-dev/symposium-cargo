@@ -38,7 +38,7 @@ async fn test_cargo_check_with_elizacp() -> Result<()> {
     )
     .await?;
 
-    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo check \",\"exit_code\":0,\"stderr\":\"    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.38s\",\"stdout\":\"\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo check "), "exit_code": Number(0), "stderr": String("    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.38s"), "stdout": String(""), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
+    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo check  --message-format json\",\"exit_code\":0,\"messages\":[{\"reason\":\"build-finished\",\"success\":true}],\"stderr\":\"    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.41s\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo check  --message-format json"), "exit_code": Number(0), "messages": Array [Object {"reason": String("build-finished"), "success": Bool(true)}], "stderr": String("    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.41s"), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
 
     Ok(())
 }
@@ -65,7 +65,7 @@ async fn test_cargo_build_with_elizacp() -> Result<()> {
     )
     .await?;
 
-    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo build \",\"exit_code\":0,\"stderr\":\"    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s\",\"stdout\":\"\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo build "), "exit_code": Number(0), "stderr": String("    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.09s"), "stdout": String(""), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
+    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo build  --message-format json\",\"exit_code\":0,\"messages\":[{\"reason\":\"build-finished\",\"success\":true}],\"stderr\":\"   Compiling symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.65s\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo build  --message-format json"), "exit_code": Number(0), "messages": Array [Object {"reason": String("build-finished"), "success": Bool(true)}], "stderr": String("   Compiling symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.65s"), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
 
     Ok(())
 }

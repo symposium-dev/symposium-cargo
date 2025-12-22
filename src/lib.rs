@@ -1,9 +1,9 @@
-mod cargo_proxy;
 mod cargo_command;
+mod cargo_proxy;
 
 use anyhow::Result;
-use sacp::component::Component;
 use sacp::ProxyToConductor;
+use sacp::component::Component;
 
 /// Run the proxy as a standalone binary connected to stdio
 pub async fn run() -> Result<()> {
