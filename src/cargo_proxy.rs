@@ -4,7 +4,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
-struct EmptyParams {}
+struct CargoCommandInputs {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+}
 
 pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<ProxyToConductor>> {
     McpServer::builder("cargo-mcp".to_string())
@@ -16,12 +19,12 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             indoc::indoc! {r#"
                 Runs cargo check.
             "#},
-            async move |_input: EmptyParams,
+            async move |input: CargoCommandInputs,
                         _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
                 Ok(execute_cargo_command(CargoCommandParams {
                     command: "check".to_string(),
                     args: vec![],
-                    cwd: None,
+                    cwd: input.cwd,
                     skip_json_format: false,
                 })
                 .await?)
@@ -33,12 +36,12 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             indoc::indoc! {r#"
                 Runs cargo build.
             "#},
-            async move |_input: EmptyParams,
+            async move |input: CargoCommandInputs,
                         _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
                 Ok(execute_cargo_command(CargoCommandParams {
                     command: "build".to_string(),
                     args: vec![],
-                    cwd: None,
+                    cwd: input.cwd,
                     skip_json_format: false,
                 })
                 .await?)

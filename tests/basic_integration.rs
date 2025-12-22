@@ -2,7 +2,12 @@ use anyhow::Result;
 use expect_test::expect;
 use sacp::DynComponent;
 use sacp_conductor::Conductor;
+use std::path::PathBuf;
 use symposium_cargo::CargoProxy;
+
+fn get_test_project_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test-project")
+}
 
 fn setup_tracing() {
     let _ = tracing_subscriber::fmt()
@@ -25,6 +30,7 @@ async fn test_cargo_check_with_elizacp() -> Result<()> {
 
     // Send a tool invocation to cargo_proxy
     // ElizACP expects format: "Use tool <server>::<tool> with <json_params>"
+    let test_project = get_test_project_path();
     let response = yopo::prompt(
         Conductor::new(
             "test-conductor".to_string(),
@@ -34,11 +40,14 @@ async fn test_cargo_check_with_elizacp() -> Result<()> {
             ],
             Default::default(),
         ),
-        r#"Use tool cargo-mcp::cargo_check with {}"#,
+        &format!(
+            r#"Use tool cargo-mcp::cargo_check with {{"cwd": "{}"}}"#,
+            test_project.display()
+        ),
     )
     .await?;
 
-    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo check  --message-format json\",\"exit_code\":0,\"messages\":[{\"reason\":\"build-finished\",\"success\":true}],\"stderr\":\"    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.41s\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo check  --message-format json"), "exit_code": Number(0), "messages": Array [Object {"reason": String("build-finished"), "success": Bool(true)}], "stderr": String("    Checking symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.41s"), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
+    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo check  --message-format json\",\"exit_code\":101,\"messages\":[{\"package_id\":\"path+file:///home/gh-jackh726/symposium/symposium-cargo/tests/test-project#0.1.0\",\"reason\":\"compiler-message\",\"rendered_message\":\"src/main.rs:2:5: error[E0425]: cannot find value `error` in this scope: not found in this scope\\n\"},{\"reason\":\"build-finished\",\"success\":false}],\"stderr\":\"    Checking test-project v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo/tests/test-project)\\nerror: could not compile `test-project` (bin \\\"test-project\\\") due to 1 previous error\",\"success\":false}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo check  --message-format json"), "exit_code": Number(101), "messages": Array [Object {"package_id": String("path+file:///home/gh-jackh726/symposium/symposium-cargo/tests/test-project#0.1.0"), "reason": String("compiler-message"), "rendered_message": String("src/main.rs:2:5: error[E0425]: cannot find value `error` in this scope: not found in this scope\n")}, Object {"reason": String("build-finished"), "success": Bool(false)}], "stderr": String("    Checking test-project v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo/tests/test-project)\nerror: could not compile `test-project` (bin \"test-project\") due to 1 previous error"), "success": Bool(false)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
 
     Ok(())
 }
@@ -52,6 +61,7 @@ async fn test_cargo_build_with_elizacp() -> Result<()> {
 
     // Send a tool invocation to cargo_proxy
     // ElizACP expects format: "Use tool <server>::<tool> with <json_params>"
+    let test_project = get_test_project_path();
     let response = yopo::prompt(
         Conductor::new(
             "test-conductor".to_string(),
@@ -61,11 +71,14 @@ async fn test_cargo_build_with_elizacp() -> Result<()> {
             ],
             Default::default(),
         ),
-        r#"Use tool cargo-mcp::cargo_build with {}"#,
+        &format!(
+            r#"Use tool cargo-mcp::cargo_build with {{"cwd": "{}"}}"#,
+            test_project.display()
+        ),
     )
     .await?;
 
-    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo build  --message-format json\",\"exit_code\":0,\"messages\":[{\"reason\":\"build-finished\",\"success\":true}],\"stderr\":\"   Compiling symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.65s\",\"success\":true}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo build  --message-format json"), "exit_code": Number(0), "messages": Array [Object {"reason": String("build-finished"), "success": Bool(true)}], "stderr": String("   Compiling symposium-cargo v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.65s"), "success": Bool(true)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
+    expect![[r#"OK: CallToolResult { content: [Annotated { raw: Text(RawTextContent { text: "{\"command\":\"cargo build  --message-format json\",\"exit_code\":101,\"messages\":[{\"package_id\":\"path+file:///home/gh-jackh726/symposium/symposium-cargo/tests/test-project#0.1.0\",\"reason\":\"compiler-message\",\"rendered_message\":\"src/main.rs:2:5: error[E0425]: cannot find value `error` in this scope: not found in this scope\\n\"},{\"reason\":\"build-finished\",\"success\":false}],\"stderr\":\"   Compiling test-project v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo/tests/test-project)\\nerror: could not compile `test-project` (bin \\\"test-project\\\") due to 1 previous error\",\"success\":false}", meta: None }), annotations: None }], structured_content: Some(Object {"command": String("cargo build  --message-format json"), "exit_code": Number(101), "messages": Array [Object {"package_id": String("path+file:///home/gh-jackh726/symposium/symposium-cargo/tests/test-project#0.1.0"), "reason": String("compiler-message"), "rendered_message": String("src/main.rs:2:5: error[E0425]: cannot find value `error` in this scope: not found in this scope\n")}, Object {"reason": String("build-finished"), "success": Bool(false)}], "stderr": String("   Compiling test-project v0.1.0 (/home/gh-jackh726/symposium/symposium-cargo/tests/test-project)\nerror: could not compile `test-project` (bin \"test-project\") due to 1 previous error"), "success": Bool(false)}), is_error: Some(false), meta: None }"#]].assert_eq(&response);
 
     Ok(())
 }
