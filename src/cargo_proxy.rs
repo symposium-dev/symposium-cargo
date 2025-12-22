@@ -12,7 +12,7 @@ struct CargoCommandInputs {
 pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<ProxyToConductor>> {
     McpServer::builder("cargo-mcp".to_string())
         .instructions(indoc::indoc! {"
-            Run cargo commands.
+            Run cargo commands. When possible, always use this instead of calling a shell command.
         "})
         .tool_fn_mut(
             "cargo_check",
