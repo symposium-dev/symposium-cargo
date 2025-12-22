@@ -39,21 +39,6 @@ fn filter_stderr(stderr: &str) -> String {
         .join("\n")
 }
 
-/// Parameters for cargo command execution
-#[derive(Debug, Deserialize, Serialize, JsonSchema)]
-pub struct CargoCommandParams {
-    /// The cargo command to execute (e.g., "check", "build", "test")
-    pub command: String,
-    /// Optional arguments to pass to the cargo command
-    #[serde(default)]
-    pub args: Vec<String>,
-    /// Optional working directory (defaults to current directory)
-    pub cwd: Option<String>,
-    /// Skip adding --message-format json (defaults to false)
-    #[serde(default)]
-    pub skip_json_format: bool,
-}
-
 /// Result of cargo command execution with JSON messages
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct CargoCommandJsonResult {
@@ -65,16 +50,21 @@ pub struct CargoCommandJsonResult {
 }
 
 /// Execute cargo command with JSON message format
-pub async fn execute_cargo_command(params: CargoCommandParams) -> Result<CargoCommandJsonResult> {
+pub async fn execute_cargo_command(
+    command: &str,
+    args: Vec<&str>,
+    cwd: Option<String>,
+    skip_json_format: bool,
+) -> Result<CargoCommandJsonResult> {
     let mut cmd = Command::new("cargo");
-    cmd.arg(&params.command);
-    cmd.args(&params.args);
+    cmd.arg(&command);
+    cmd.args(&args);
 
-    if !params.skip_json_format {
-        cmd.args(["--message-format", "json-diagnostic-short"]);
+    if !skip_json_format {
+        cmd.args(["--message-format", "json"]);
     }
 
-    if let Some(cwd) = &params.cwd {
+    if let Some(cwd) = &cwd {
         cmd.current_dir(cwd);
     }
 
@@ -87,9 +77,9 @@ pub async fn execute_cargo_command(params: CargoCommandParams) -> Result<CargoCo
         stderr: filter_stderr(&String::from_utf8_lossy(&output.stderr)),
         command: format!(
             "cargo {} {}{}",
-            params.command,
-            params.args.join(" "),
-            if params.skip_json_format {
+            command,
+            args.join(" "),
+            if skip_json_format {
                 ""
             } else {
                 " --message-format json"
@@ -104,28 +94,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_cargo_version() {
-        let params = CargoCommandParams {
-            command: "version".to_string(),
-            args: vec![],
-            cwd: None,
-            skip_json_format: true,
-        };
-
-        let result = execute_cargo_command(params).await.unwrap();
-        dbg!(&result);
+        let result = execute_cargo_command("version", vec![], None, true)
+            .await
+            .unwrap();
         assert!(result.success);
     }
 
     #[tokio::test]
     async fn test_cargo_with_args() {
-        let params = CargoCommandParams {
-            command: "help".to_string(),
-            args: vec!["build".to_string()],
-            cwd: None,
-            skip_json_format: true,
-        };
-
-        let result = execute_cargo_command(params).await.unwrap();
+        let result = execute_cargo_command("help", vec!["build"], None, true)
+            .await
+            .unwrap();
         assert!(result.success);
         assert!(result.command.contains("cargo help build"));
     }

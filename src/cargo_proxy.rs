@@ -1,4 +1,4 @@
-use crate::cargo_command::{CargoCommandParams, execute_cargo_command};
+use crate::cargo_command::execute_cargo_command;
 use sacp::{ProxyToConductor, mcp_server::McpServer};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,13 +21,7 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             "#},
             async move |input: CargoCommandInputs,
                         _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
-                Ok(execute_cargo_command(CargoCommandParams {
-                    command: "check".to_string(),
-                    args: vec![],
-                    cwd: input.cwd,
-                    skip_json_format: false,
-                })
-                .await?)
+                Ok(execute_cargo_command("check", vec![], input.cwd, false).await?)
             },
             sacp::tool_fn_mut!(),
         )
@@ -38,13 +32,7 @@ pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<Prox
             "#},
             async move |input: CargoCommandInputs,
                         _mcp_cx: sacp::mcp_server::McpContext<ProxyToConductor>| {
-                Ok(execute_cargo_command(CargoCommandParams {
-                    command: "build".to_string(),
-                    args: vec![],
-                    cwd: input.cwd,
-                    skip_json_format: false,
-                })
-                .await?)
+                Ok(execute_cargo_command("build", vec![], input.cwd, false).await?)
             },
             sacp::tool_fn_mut!(),
         )
