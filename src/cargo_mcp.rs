@@ -17,7 +17,7 @@ struct CargoTestInputs {
     pub test_arg: Option<String>,
 }
 
-pub fn build_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<ProxyToConductor>> {
+pub fn build_mcp_server() -> McpServer<ProxyToConductor, impl sacp::JrResponder<ProxyToConductor>> {
     McpServer::builder("cargo-mcp".to_string())
         .instructions(indoc::indoc! {"
             Run cargo commands. When possible, always use this instead of calling a shell command.
