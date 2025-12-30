@@ -1,6 +1,6 @@
 # symposium-cargo
 
-An ACP proxy wrapping a Model Context Protocol (MCP) server for executing Cargo commands with structured JSON output.
+An ACP proxy wrapping a MCP server for executing Cargo commands with structured JSON output.
 
 Part of the [Symposium](https://github.com/symposium-dev) project.
 

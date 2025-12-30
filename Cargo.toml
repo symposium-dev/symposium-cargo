@@ -2,6 +2,11 @@
 name = "symposium-cargo"
 version = "0.1.0"
 edition = "2024"
+license = "MIT or Apache-2.0"
+description = "Symposium Cargo proxy - an MCP server connecting to Cargo and a ACP Proxy managing it"
+repository = "https://github.com/symposium-dev/symposium-cargo"
+readme = "README.md"
+
 
 [dependencies]
 anyhow = "1.0.100"
