@@ -11,8 +11,8 @@ readme = "README.md"
 [dependencies]
 anyhow = "1.0.100"
 indoc = "2.0.7"
-sacp = "9.0.0"
-sacp-tokio = "9.0.0"
+sacp = "10.0.0"
+sacp-tokio = "10.0.0"
 schemars = "1.1.0"
 serde = "1.0.228"
 serde_json = "1.0.145"
@@ -21,7 +21,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
 [dev-dependencies]
-elizacp = "9.0.0"
-yopo = "9.0.0"
+elizacp = "10.0.0"
+yopo = "10.0.0"
 expect-test = "1.5"
-sacp-conductor = "9.0.0"
+sacp-conductor = "10.0.0"
