@@ -1,17 +1,17 @@
 mod cargo_command;
 pub mod cargo_mcp;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
 pub use cargo_mcp::build_mcp_server;
 use sacp::component::Component;
 use sacp::link::{ConductorToProxy, ProxyToConductor};
 use sacp::schema::{
-    PromptRequest, SessionNotification, SessionUpdate, TextContent, ToolCallStatus,
+    ContentChunk, PromptRequest, SessionNotification, SessionUpdate, TextContent, ToolCallStatus,
 };
 use sacp::{AgentPeer, ClientPeer, on_receive_request};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 pub struct CargoProxy;
 
@@ -37,13 +37,12 @@ impl Component<ProxyToConductor> for CargoProxy {
                                     req_cx.respond(res.clone())?;
                                     match res.stop_reason {
                                         sacp::schema::StopReason::EndTurn => {
-                                            let mut has_unchecked_changes_to_rs_files = has_unchecked_changes_to_rs_files.lock().await;
-                                            tracing::debug!(has_unchecked_changes_to_rs_files = ?*has_unchecked_changes_to_rs_files);
-                                            if !*has_unchecked_changes_to_rs_files {
+                                            let has_unchecked_changes_to_rs_files = std::mem::take(
+                                                &mut *has_unchecked_changes_to_rs_files.lock().expect("not poisoned"),
+                                            );
+                                            if !has_unchecked_changes_to_rs_files {
                                                 return Ok(());
                                             }
-                                            *has_unchecked_changes_to_rs_files = false;
-                                            drop(has_unchecked_changes_to_rs_files);
                                             let cwd = cwd.read().await.clone();
 
                                             let res = crate::cargo_command::execute_cargo_command("check", vec![], cwd, false).await?;
@@ -52,11 +51,16 @@ impl Component<ProxyToConductor> for CargoProxy {
                                             }
                                             let json = serde_json::to_string(&res)?;
                                             let content = sacp::schema::ContentBlock::Text(TextContent::new(indoc::formatdoc! {"
-                                                Cargo check has automatically been run and the project failed to build with the following output. Please fix the errors.
+                                                Cargo check has automatically been run and the project failed to build with the following output. You may wish to fix the errors.
 
                                                 {json}
                                             "}));
-                                            conn_cx.send_request_to(AgentPeer, PromptRequest::new(prompt_req.session_id, vec![content]));
+                                            conn_cx.send_request_to(AgentPeer, PromptRequest::new(prompt_req.session_id.clone(), vec![content]));
+
+                                            let content = sacp::schema::ContentBlock::Text(TextContent::new(indoc::formatdoc! {"
+                                                Cargo check has automatically been run and the project failed to build with the following output (omitted). You may wish to fix the errors.
+                                            "}));
+                                            conn_cx.send_notification_to(ClientPeer, SessionNotification::new(prompt_req.session_id, SessionUpdate::UserMessageChunk(ContentChunk::new(content))))?;
 
                                             Ok(())
                                         }
@@ -93,7 +97,7 @@ impl Component<ProxyToConductor> for CargoProxy {
                                 })
                                 .unwrap_or(false)
                         {
-                            *has_unchecked_changes_to_rs_files.lock().await = true;
+                            *has_unchecked_changes_to_rs_files.lock().expect("not poisoned") = true;
                         }
 
                         cx.send_notification_to(ClientPeer, notification)?;
