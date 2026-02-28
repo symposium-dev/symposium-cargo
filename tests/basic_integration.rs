@@ -22,7 +22,7 @@ fn setup_tracing() {
 
 async fn run_cargo_tool(tool: &str) -> Result<String> {
     setup_tracing();
-    let proxy = CargoProxy;
+    let proxy = CargoProxy::default();
     let test_project = get_test_project_path();
 
     Ok(yopo::prompt(

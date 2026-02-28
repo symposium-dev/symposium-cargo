@@ -1058,6 +1058,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
+name = "linux-raw-sys"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
+
+[[package]]
 name = "litemap"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1598,6 +1604,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustix"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "146c9e247ccc180c1f61615433868c99f3de3ae256a30a43b49f67c2d9171f34"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "rustls"
 version = "0.23.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1646,9 +1665,9 @@ checksum = "a50f4cf475b65d88e057964e0e9bb1f0aa9bbb2036dc65c64596b42932536984"
 
 [[package]]
 name = "sacp"
-version = "10.0.0"
+version = "10.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47c1b52b3ee79933b19f2ce71945eaa17ef91ee68444e6716d05e335763af1a4"
+checksum = "704f40d3c269b30229c34093b658ec80c4fac103281654b3965249c592dd6fa6"
 dependencies = [
  "agent-client-protocol-schema",
  "anyhow",
@@ -1671,9 +1690,9 @@ dependencies = [
 
 [[package]]
 name = "sacp-conductor"
-version = "10.0.0"
+version = "10.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ee5ed27db7ad9ff65c75b71cf9052f1798eb64d00b34eac0eb695f977e4173b"
+checksum = "f91f2131d781dcd54d0dc380a73d90151cb6e95a7a66b80f3c90af8bcb161ed9"
 dependencies = [
  "agent-client-protocol-schema",
  "anyhow",
@@ -1715,9 +1734,9 @@ dependencies = [
 
 [[package]]
 name = "sacp-tokio"
-version = "10.0.0"
+version = "10.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebf224083e9a8cb85b708a3e560c660c411641ba8c27aa1c11110bd90c0641b6"
+checksum = "efa7ff79ad3e47bd5e9ee668996e2cd53b5ddb99ab9b29366efb964af0943e6d"
 dependencies = [
  "futures",
  "sacp",
@@ -2000,6 +2019,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -2035,6 +2055,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tempfile"
+version = "3.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0136791f7c95b1f6dd99f9cc786b91bb81c3800b639b3478e561ddb7be95e5f1"
+dependencies = [
+ "fastrand",
+ "getrandom 0.3.4",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2879,9 +2912,9 @@ dependencies = [
 
 [[package]]
 name = "yopo"
-version = "10.0.0"
+version = "10.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ff65663a8fee8aac90f4a133f5def0c2f0aba5746c6c7c6a119651777421ea"
+checksum = "54f2f357691337f76d3d9a1931c9f49c385684d3cd637891d742ecf71f12423e"
 dependencies = [
  "clap",
  "sacp",

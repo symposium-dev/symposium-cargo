@@ -14,7 +14,9 @@ pub async fn run() -> Result<()> {
 
     tracing::info!("Starting cargo-proxy");
 
-    CargoProxy.serve(sacp_tokio::Stdio::new()).await?;
+    CargoProxy::default()
+        .serve(sacp_tokio::Stdio::new())
+        .await?;
 
     Ok(())
 }
