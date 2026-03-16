@@ -20,7 +20,7 @@ impl Component<ProxyToConductor> for CargoProxy {
     async fn serve(self, client: impl Component<ConductorToProxy>) -> Result<(), sacp::Error> {
         let cwd = Arc::new(RwLock::new(self.workspace_path));
         ProxyToConductor::builder()
-            .name("cargo-proxy")
+            .name("cargo-proxy") 
             .with_mcp_server(build_mcp_server(cwd.clone()))
             .on_receive_request_from(
                 ClientPeer,

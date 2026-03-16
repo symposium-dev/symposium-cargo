@@ -1,6 +1,6 @@
 use crate::cargo_command::execute_cargo_command;
 use sacp::{
-    ProxyToConductor,
+    JrLink,
     mcp_server::{McpContext, McpServer},
 };
 use schemars::JsonSchema;
@@ -80,9 +80,9 @@ struct CargoUpdateInputs {
     pub extra_args: Option<Vec<String>>,
 }
 
-pub fn build_mcp_server(
+pub fn build_mcp_server<L: JrLink>(
     cwd: Arc<RwLock<Option<String>>>,
-) -> McpServer<ProxyToConductor, impl sacp::JrResponder<ProxyToConductor>> {
+) -> McpServer<L, impl sacp::JrResponder<L>> {
     McpServer::builder("cargo-mcp".to_string())
         .instructions(indoc::indoc! {"
             Run cargo commands. When possible, always use this instead of calling a shell command. Generally, it makes
@@ -96,7 +96,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: SetCwdInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: SetCwdInputs, _mcp_cx: McpContext<L>| {
                     *cwd.write().await = input.cwd.clone();
 
                     Ok(SetCwdResult {
@@ -113,7 +113,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCommandInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoCommandInputs, _mcp_cx: McpContext<L>| {
                     let cwd = if input.cwd.is_some() {
                         input.cwd
                     } else {
@@ -132,7 +132,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCommandInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoCommandInputs, _mcp_cx: McpContext<L>| {
                     let cwd = if input.cwd.is_some() {
                         input.cwd
                     } else {
@@ -151,7 +151,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoTestInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoTestInputs, _mcp_cx: McpContext<L>| {
                     let args = if let Some(test_arg) = input.test_arg.as_deref() {
                         vec![test_arg]
                     } else {
@@ -176,7 +176,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoAddInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoAddInputs, _mcp_cx: McpContext<L>| {
                     let mut args: Vec<&str> = Vec::new();
                     args.push(&input.package);
                     if let Some(extra) = &input.extra_args {
@@ -201,7 +201,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCleanInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoCleanInputs, _mcp_cx: McpContext<L>| {
                     let mut args: Vec<&str> = Vec::new();
                     if let Some(extra) = &input.extra_args {
                         args.extend(extra.iter().map(|s| s.as_str()));
@@ -225,7 +225,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoRemoveInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoRemoveInputs, _mcp_cx: McpContext<L>| {
                     let mut args: Vec<&str> = Vec::new();
                     args.push(&input.package);
                     if let Some(extra) = &input.extra_args {
@@ -250,7 +250,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoRunInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoRunInputs, _mcp_cx: McpContext<L>| {
                     let mut args: Vec<&str> = Vec::new();
                     if input.release.unwrap_or(false) {
                         args.push("--release");
@@ -277,7 +277,7 @@ pub fn build_mcp_server(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoUpdateInputs, _mcp_cx: McpContext<ProxyToConductor>| {
+                async move |input: CargoUpdateInputs, _mcp_cx: McpContext<L>| {
                     let mut args: Vec<&str> = Vec::new();
                     if let Some(pkg) = input.package.as_deref() {
                         args.push("-p");
