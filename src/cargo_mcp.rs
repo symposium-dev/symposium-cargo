@@ -1,8 +1,6 @@
 use crate::cargo_command::execute_cargo_command;
-use sacp::{
-    JrLink,
-    mcp_server::{McpContext, McpServer},
-};
+use sacp::mcp_server::{McpConnectionTo, McpServer};
+use sacp::{Role, RunWithConnectionTo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -80,9 +78,9 @@ struct CargoUpdateInputs {
     pub extra_args: Option<Vec<String>>,
 }
 
-pub fn build_mcp_server<L: JrLink>(
+pub fn build_mcp_server<Counterpart: Role>(
     cwd: Arc<RwLock<Option<String>>>,
-) -> McpServer<L, impl sacp::JrResponder<L>> {
+) -> McpServer<Counterpart, impl RunWithConnectionTo<Counterpart>> {
     McpServer::builder("cargo-mcp".to_string())
         .instructions(indoc::indoc! {"
             Run cargo commands. When possible, always use this instead of calling a shell command. Generally, it makes
@@ -96,7 +94,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: SetCwdInputs, _mcp_cx: McpContext<L>| {
+                async move |input: SetCwdInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     *cwd.write().await = input.cwd.clone();
 
                     Ok(SetCwdResult {
@@ -113,7 +111,8 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCommandInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoCommandInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
+                    dbg!();
                     let cwd = if input.cwd.is_some() {
                         input.cwd
                     } else {
@@ -132,7 +131,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCommandInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoCommandInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let cwd = if input.cwd.is_some() {
                         input.cwd
                     } else {
@@ -151,7 +150,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoTestInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoTestInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let args = if let Some(test_arg) = input.test_arg.as_deref() {
                         vec![test_arg]
                     } else {
@@ -176,7 +175,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoAddInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoAddInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let mut args: Vec<&str> = Vec::new();
                     args.push(&input.package);
                     if let Some(extra) = &input.extra_args {
@@ -201,7 +200,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoCleanInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoCleanInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let mut args: Vec<&str> = Vec::new();
                     if let Some(extra) = &input.extra_args {
                         args.extend(extra.iter().map(|s| s.as_str()));
@@ -225,7 +224,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoRemoveInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoRemoveInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let mut args: Vec<&str> = Vec::new();
                     args.push(&input.package);
                     if let Some(extra) = &input.extra_args {
@@ -250,7 +249,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoRunInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoRunInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let mut args: Vec<&str> = Vec::new();
                     if input.release.unwrap_or(false) {
                         args.push("--release");
@@ -277,7 +276,7 @@ pub fn build_mcp_server<L: JrLink>(
             "#},
             {
                 let cwd = cwd.clone();
-                async move |input: CargoUpdateInputs, _mcp_cx: McpContext<L>| {
+                async move |input: CargoUpdateInputs, _mcp_cx: McpConnectionTo<Counterpart>| {
                     let mut args: Vec<&str> = Vec::new();
                     if let Some(pkg) = input.package.as_deref() {
                         args.push("-p");
