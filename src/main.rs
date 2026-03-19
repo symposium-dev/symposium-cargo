@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use pico_args::Arguments;
-use sacp::{ByteStreams, component::Component};
+use sacp::{ByteStreams, ConnectTo};
 use symposium_cargo::{CargoProxy, build_mcp_server};
 use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
 
 /// Run the proxy as a standalone binary connected to stdio
 pub async fn run_proxy() -> Result<()> {
     CargoProxy::default()
-        .serve(sacp_tokio::Stdio::new())
+        .connect_to(sacp_tokio::Stdio::new())
         .await?;
 
     Ok(())
@@ -21,7 +21,7 @@ pub async fn run_mcp() -> Result<()> {
         tokio::io::stdout().compat_write(),
         tokio::io::stdin().compat(),
     );
-    mcp.serve(stido).await?;
+    mcp.connect_to(stido).await?;
 
     Ok(())
 }

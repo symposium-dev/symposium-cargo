@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sacp_conductor::{Conductor, ProxiesAndAgent};
+use sacp_conductor::{ConductorImpl, ProxiesAndAgent};
 use std::path::PathBuf;
 use symposium_cargo::CargoProxy;
 
@@ -25,9 +25,9 @@ async fn run_cargo_tool(tool: &str) -> Result<String> {
     let test_project = get_test_project_path();
 
     Ok(yopo::prompt(
-        Conductor::new_agent(
+        ConductorImpl::new_agent(
             "test-conductor".to_string(),
-            ProxiesAndAgent::new(elizacp::ElizaAgent::new()).proxy(proxy),
+            ProxiesAndAgent::new(elizacp::ElizaAgent::new(true)).proxy(proxy),
             Default::default(),
         ),
         &format!(

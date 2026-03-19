@@ -1,14 +1,14 @@
 use anyhow::Result;
-use sacp::ClientToAgent;
 use sacp::schema::{
     ContentBlock, InitializeRequest, ProtocolVersion, SessionNotification, TextContent,
 };
-use sacp::util::MatchMessage;
+use sacp::util::MatchDispatch;
+use sacp::{Client, ConnectionTo};
 use std::path::PathBuf;
 use tempfile::tempdir;
 use tokio::io::AsyncWriteExt;
 
-use sacp_conductor::{Conductor, ProxiesAndAgent};
+use sacp_conductor::{ConductorImpl, ProxiesAndAgent};
 use symposium_cargo::CargoProxy;
 use symposium_cargo::cargo_command::execute_cargo_command;
 
@@ -39,14 +39,12 @@ async fn make_pass(project_root: &PathBuf) -> Result<()> {
 
 mod agent {
     use anyhow::Result;
-    use sacp::component::Component;
-    use sacp::link::AgentToClient;
     use sacp::schema::{
         AgentCapabilities, ContentBlock, ContentChunk, InitializeRequest, InitializeResponse,
         LoadSessionRequest, LoadSessionResponse, NewSessionRequest, NewSessionResponse,
         PromptRequest, PromptResponse, SessionNotification, SessionUpdate, StopReason, TextContent,
     };
-    use sacp::{JrConnectionCx, JrRequestCx};
+    use sacp::{Agent, Client, ConnectTo, ConnectionTo};
 
     use serde_json;
     use std::collections::HashMap;
@@ -59,14 +57,13 @@ mod agent {
     #[derive(Clone)]
     pub struct TestAgent {
         project_root: PathBuf,
-        sessions: Arc<Mutex<HashMap<String, JrConnectionCx<AgentToClient>>>>,
+        sessions: Arc<Mutex<HashMap<String, ConnectionTo<Client>>>>,
         stage: u8,
     }
 
     impl TestAgent {
         pub fn new(project_root: PathBuf) -> Self {
-            let sessions: Arc<Mutex<HashMap<String, JrConnectionCx<AgentToClient>>>> =
-                Arc::new(Mutex::new(HashMap::new()));
+            let sessions = Arc::new(Mutex::new(HashMap::new()));
 
             TestAgent {
                 project_root,
@@ -76,20 +73,19 @@ mod agent {
         }
     }
 
-    impl Component<AgentToClient> for TestAgent {
-        async fn serve(
+    impl ConnectTo<Client> for TestAgent {
+        async fn connect_to(
             mut self,
-            client: impl Component<sacp::link::ClientToAgent>,
-        ) -> Result<(), sacp::Error> {
+            client: impl ConnectTo<Agent>,
+        ) -> std::result::Result<(), sacp::Error> {
             let sessions = self.sessions.clone();
 
-            AgentToClient::builder()
+            Agent
+                .builder()
                 .name("test-agent")
                 .on_receive_request(
-                    async move |initialize: InitializeRequest,
-                                request_cx: JrRequestCx<InitializeResponse>,
-                                _cx: JrConnectionCx<AgentToClient>| {
-                        request_cx.respond(
+                    async move |initialize: InitializeRequest, responder, _cx| {
+                        responder.respond(
                             InitializeResponse::new(initialize.protocol_version)
                                 .agent_capabilities(AgentCapabilities::new()),
                         )
@@ -99,9 +95,7 @@ mod agent {
                 .on_receive_request(
                     {
                         let sessions = sessions.clone();
-                        async move |_request: NewSessionRequest,
-                                    request_cx: JrRequestCx<NewSessionResponse>,
-                                    _cx: JrConnectionCx<AgentToClient>| {
+                        async move |_request: NewSessionRequest, responder, _cx| {
                             let now = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
                                 .unwrap()
@@ -111,7 +105,7 @@ mod agent {
                                 .lock()
                                 .unwrap()
                                 .insert(session_id.clone().to_string(), _cx.clone());
-                            request_cx.respond(NewSessionResponse::new(session_id))
+                            responder.respond(NewSessionResponse::new(session_id))
                         }
                     },
                     sacp::on_receive_request!(),
@@ -119,14 +113,12 @@ mod agent {
                 .on_receive_request(
                     {
                         let sessions = sessions.clone();
-                        async move |request: LoadSessionRequest,
-                                    request_cx: JrRequestCx<LoadSessionResponse>,
-                                    _cx: JrConnectionCx<AgentToClient>| {
+                        async move |request: LoadSessionRequest, responder, _cx| {
                             sessions
                                 .lock()
                                 .unwrap()
                                 .insert(request.session_id.clone().to_string(), _cx.clone());
-                            request_cx.respond(LoadSessionResponse::new())
+                            responder.respond(LoadSessionResponse::new())
                         }
                     },
                     sacp::on_receive_request!(),
@@ -135,8 +127,8 @@ mod agent {
                     {
                         let sessions = sessions.clone();
                         async move |request: PromptRequest,
-                                    request_cx: JrRequestCx<PromptResponse>,
-                                    cx: JrConnectionCx<AgentToClient>|
+                                    responder,
+                                    cx|
                                     -> Result<(), sacp::Error> {
                             sessions
                                 .lock()
@@ -181,13 +173,12 @@ mod agent {
                             }
                             self.stage += 1;
 
-                            request_cx.respond(PromptResponse::new(StopReason::EndTurn))
+                            responder.respond(PromptResponse::new(StopReason::EndTurn))
                         }
                     },
                     sacp::on_receive_request!(),
                 )
-                .connect_to(client)?
-                .serve()
+                .connect_to(client)
                 .await
         }
     }
@@ -251,21 +242,20 @@ async fn subagent_flow_simulation() -> Result<()> {
         workspace_path: Some(project_path.to_string_lossy().to_string()),
     };
 
-    let component = Conductor::new_agent(
+    let component = ConductorImpl::new_agent(
         "test-conductor".to_string(),
         ProxiesAndAgent::new(agent).proxy(proxy),
         Default::default(),
     );
-    ClientToAgent::builder()
-        .connect_to(component)?
-        .run_until(|cx: sacp::JrConnectionCx<ClientToAgent>| async move {
+    Client.builder()
+        .connect_with(component, |connection: ConnectionTo<sacp::Agent>| async move {
             // Initialize the agent
-            let _init_response = cx
+            let _init_response = connection
                 .send_request(InitializeRequest::new(ProtocolVersion::LATEST))
                 .block_task()
                 .await?;
 
-            let mut session = cx
+            let mut session = connection
                 .build_session(PathBuf::from("."))
                 .block_task()
                 .start_session()
@@ -282,7 +272,7 @@ async fn subagent_flow_simulation() -> Result<()> {
                 let update = session.read_update().await?;
                 match update {
                     sacp::SessionMessage::SessionMessage(message) => {
-                        MatchMessage::new(message)
+                        MatchDispatch::new(message)
                             .if_notification(async |notification: SessionNotification| {
                                 match notification.update {
                                     sacp::schema::SessionUpdate::AgentMessageChunk(
